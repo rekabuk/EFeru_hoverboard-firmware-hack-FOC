@@ -113,6 +113,9 @@ int16_t dc_curr;                 // global variable for Total DC Link current
 int16_t cmdL;                    // global variable for Left Command 
 int16_t cmdR;                    // global variable for Right Command 
 
+extern int16_t odom_r;
+extern int16_t odom_l;
+
 //------------------------------------------------------------------------
 // Local variables
 //------------------------------------------------------------------------
@@ -123,6 +126,8 @@ typedef struct{
   int16_t   cmd2;
   int16_t   speedR_meas;
   int16_t   speedL_meas;
+  int16_t   wheelR_cnt;
+  int16_t   wheelL_cnt;
   int16_t   batVoltage;
   int16_t   boardTemp;
   uint16_t  cmdLed;
@@ -491,15 +496,17 @@ int main(void) {
         #if defined(DEBUG_SERIAL_PROTOCOL)
           process_debug();
         #else
-          printf("in1:%i in2:%i cmdL:%i cmdR:%i BatADC:%i BatV:%i TempADC:%i Temp:%i \r\n",
+          printf("in1:%i in2:%i cmdL:%i cmdR:%i cntL:%i cntR: %i BatADC:%i BatV:%i TempADC:%i Temp:%i \r\n",
             input1[inIdx].raw,        // 1: INPUT1
             input2[inIdx].raw,        // 2: INPUT2
             cmdL,                     // 3: output command: [-1000, 1000]
             cmdR,                     // 4: output command: [-1000, 1000]
-            adc_buffer.batt1,         // 5: for battery voltage calibration
-            batVoltageCalib,          // 6: for verifying battery voltage calibration
-            board_temp_adcFilt,       // 7: for board temperature calibration
-            board_temp_deg_c);        // 8: for verifying board temperature calibration
+	        odom_l,           	      // 5: Left wheel count
+	        odom_r,          	      // 6: Right wheel count
+            adc_buffer.batt1,         // 7: for battery voltage calibration
+            batVoltageCalib,          // 8: for verifying battery voltage calibration
+            board_temp_adcFilt,       // 9: for board temperature calibration
+            board_temp_deg_c);        // 10: for verifying board temperature calibration
         #endif
       }
     #endif
@@ -510,16 +517,19 @@ int main(void) {
         Feedback.start	        = (uint16_t)SERIAL_START_FRAME;
         Feedback.cmd1           = (int16_t)input1[inIdx].cmd;
         Feedback.cmd2           = (int16_t)input2[inIdx].cmd;
-        Feedback.speedR_meas	  = (int16_t)rtY_Right.n_mot;
-        Feedback.speedL_meas	  = (int16_t)rtY_Left.n_mot;
-        Feedback.batVoltage	    = (int16_t)batVoltageCalib;
-        Feedback.boardTemp	    = (int16_t)board_temp_deg_c;
+        Feedback.speedR_meas	= (int16_t)rtY_Right.n_mot;
+        Feedback.speedL_meas	= (int16_t)rtY_Left.n_mot;
+        Feedback.wheelR_cnt     = (int16_t)odom_r;
+        Feedback.wheelL_cnt     = (int16_t)odom_l;
+        Feedback.batVoltage	= (int16_t)batVoltageCalib;
+        Feedback.boardTemp	= (int16_t)board_temp_deg_c;  
 
         #if defined(FEEDBACK_SERIAL_USART2)
           if(__HAL_DMA_GET_COUNTER(huart2.hdmatx) == 0) {
             Feedback.cmdLed     = (uint16_t)sideboard_leds_L;
             Feedback.checksum   = (uint16_t)(Feedback.start ^ Feedback.cmd1 ^ Feedback.cmd2 ^ Feedback.speedR_meas ^ Feedback.speedL_meas 
-                                           ^ Feedback.batVoltage ^ Feedback.boardTemp ^ Feedback.cmdLed);
+                                            ^ Feedback.wheelR_cnt ^ Feedback.wheelL_cnt
+                                            ^ Feedback.batVoltage ^ Feedback.boardTemp ^ Feedback.cmdLed);
 
             HAL_UART_Transmit_DMA(&huart2, (uint8_t *)&Feedback, sizeof(Feedback));
           }
@@ -528,8 +538,9 @@ int main(void) {
           if(__HAL_DMA_GET_COUNTER(huart3.hdmatx) == 0) {
             Feedback.cmdLed     = (uint16_t)sideboard_leds_R;
             Feedback.checksum   = (uint16_t)(Feedback.start ^ Feedback.cmd1 ^ Feedback.cmd2 ^ Feedback.speedR_meas ^ Feedback.speedL_meas 
-                                           ^ Feedback.batVoltage ^ Feedback.boardTemp ^ Feedback.cmdLed);
-
+                                            ^ Feedback.wheelR_cnt ^ Feedback.wheelL_cnt
+                                            ^ Feedback.batVoltage ^ Feedback.boardTemp ^ Feedback.cmdLed);
+                                            
             HAL_UART_Transmit_DMA(&huart3, (uint8_t *)&Feedback, sizeof(Feedback));
           }
         #endif
