@@ -84,7 +84,7 @@ static int32_t batVoltageFixdt  = (400 * BAT_CELLS * BAT_CALIB_ADC) / BAT_CALIB_
 int16_t odom_l = 0;
 int16_t odom_r = 0;
 
-static uint16_t wp_l_vorher = 0;
+static uint16_t wp_l_vorher = 0; // voher = before
 static uint16_t wp_r_vorher = 0;
 
 int16_t modulo(int16_t m, int16_t rest_classes){
@@ -221,9 +221,7 @@ void DMA1_Channel1_IRQHandler(void) {
 
   uint8_t encoding = (uint8_t)((hall_ul<<2) + (hall_vl<<1) + hall_wl);
   int wheel_pos = rtConstP.vec_hallToPos_Value[encoding];
-
-  odom_l = modulo(odom_l + up_or_down(wp_l_vorher, wheel_pos), 90);
-  //odom_l = wheel_pos;
+  odom_l = modulo(odom_l + up_or_down(wp_l_vorher, wheel_pos), 9000)
   wp_l_vorher = wheel_pos;
 
     /* Apply commands */
@@ -266,9 +264,7 @@ void DMA1_Channel1_IRQHandler(void) {
 
   encoding = (uint8_t)((hall_ur<<2) + (hall_vr<<1) + hall_wr);
   wheel_pos = rtConstP.vec_hallToPos_Value[encoding];
-
-  odom_r = modulo(odom_r - up_or_down(wp_r_vorher, wheel_pos), 90);
-  //odom_r = wheel_pos;
+  odom_r = modulo(odom_r - up_or_down(wp_r_vorher, wheel_pos), 9000);
   wp_r_vorher = wheel_pos;
 
     /* Apply commands */
